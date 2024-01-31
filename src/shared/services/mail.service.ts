@@ -1,7 +1,6 @@
 // mail.service.ts
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import { SendCodeDto } from 'src/main/users/users.dto';
 
 @Injectable()
 export class MailService {

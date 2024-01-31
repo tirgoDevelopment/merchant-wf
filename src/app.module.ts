@@ -25,7 +25,7 @@ import { SocketGateway } from './shared/gateway/socket.gateway';
         port: 5432,
         username: 'postgres',
         password: 'postgres',
-        database: 'merchant',
+        database: 'tirgo',
         entities: entities,
         synchronize: true,
         autoLoadEntities: true,

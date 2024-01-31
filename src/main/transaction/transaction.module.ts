@@ -1,17 +1,17 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TransactionController } from "./transaction.controller";
-import { Transaction } from "./transaction.entity";
+import { TransactionsController } from "./transaction.controller";
+import { Transaction, User } from "..";
 import { TransactionService } from "./transaction.service";
 import { SharedModule } from "src/shared/modules/shared.module";
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Transaction]),
+        TypeOrmModule.forFeature([Transaction, User]),
         SharedModule
     ],
     controllers: [
-        TransactionController
+        TransactionsController
     ],
     providers: [
         TransactionService

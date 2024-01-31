@@ -2,10 +2,8 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Merchant } from './entities/merchant.entity';
-import { CompleteMerchantDto, MerchantDto } from './merchant.dto';
-import { BpmResponse, User, Role, Cargo, Transaction } from '..';
-import { BankAccount } from './entities/bank-account.entity';
+import { CreateMerchantDto, MerchantDto } from './merchant.dto';
+import { BpmResponse, User, Role, Order, Merchant, Transaction, BankAccount, NoContentException, InternalErrorException, ResponseStauses } from '..';
 import { SseGateway } from 'src/shared/gateway/sse.gateway';
 
 @Injectable()
@@ -15,7 +13,7 @@ export class MerchantService {
     @InjectRepository(BankAccount) private readonly bankAccountRepository: Repository<BankAccount>,
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
     @InjectRepository(Role) private readonly rolesRepository: Repository<Role>,
-    @InjectRepository(Cargo) private readonly cargosRepository: Repository<Cargo>,
+    @InjectRepository(Order) private readonly ordersRepository: Repository<Order>,
     @InjectRepository(Transaction) private readonly transactionsRepository: Repository<Transaction>,
     private eventsService: SseGateway
   ) { }
@@ -24,19 +22,27 @@ export class MerchantService {
     try {
       const data: any = await this.merchantsRepository.find({
         where: { active: true },
-        relations: ['users', 'cargos']
+        relations: ['users', 'orders']
       });
-      for (let i = 0; i < data.length; i++) {
-        const bankAccount: any = await this.bankAccountRepository.find({ where: { active: true, merchantId: data[i].id }, relations: ['currency'] })
-        const accountData = bankAccount.map((el: any) => {
-          return { account: el.account, currencyName: el.currency?.name }
-        })
-        data[i].bankAccounts = accountData;
+      // for (let i = 0; i < data.length; i++) {
+      //   const bankAccount: any = await this.bankAccountRepository.find({ where: { active: true, merchantId: data[i].id }, relations: ['currency'] })
+      //   const accountData = bankAccount.map((el: any) => {
+      //     return { account: el.account, currencyName: el.currency?.name }
+      //   })
+      //   data[i].bankAccounts = accountData;
+      // }
+      if (data.legnth) {
+        return new BpmResponse(true, data, null);
+      } else {
+        throw new NoContentException();
       }
-      return new BpmResponse(true, data, null);
     }
-    catch (error: any) {
-      console.log(error)
+    catch (err: any) {
+      if (err instanceof HttpException) {
+        throw err
+      } else {
+        throw new InternalErrorException(ResponseStauses.InternalServerError, err.message);
+      }
     }
   }
 
@@ -44,27 +50,31 @@ export class MerchantService {
     try {
       const data: any = await this.merchantsRepository.find({
         where: { active: true, verified: true, completed: true },
-        relations: ['users', 'cargos']
+        relations: ['users', 'orders']
       });
-      let transactions = await this.transactionsRepository.find({where: { active: true, verified: true }, relations: ['merchant']});
-      const cargos = await this.cargosRepository.find({ where: { active: true }, relations: ['merchant'] });
-      for (let i = 0; i < data.length; i++) {
-        const bankAccount: any = await this.bankAccountRepository.find({ where: { active: true, merchantId: data[i]?.id }, relations: ['currency'] })
-        const accountData = bankAccount.map((el: any) => {
-          return { account: el.account, currencyName: el.currency?.name }
-        })
-        data[i].bankAccounts = accountData;
-        data[i].cargosCount = cargos.filter((el: any) => el.merchant['id'] == data[i].id).length;
-        const rawTransactions = transactions.filter((el: any) => el.merchant['id'] == data[i]?.id);
-        const topup = rawTransactions.filter((el: any) => el.transactionType == 'topup').reduce((a: any, b: any) => a + b.amount, 0);
-        const withdraw = rawTransactions.filter((el: any) => el.transactionType == 'withdrow').reduce((a: any, b: any) => a + b.amount, 0);
-      }
+
+      let transactions = await this.transactionsRepository.find({ where: { active: true, verified: true }, relations: ['merchant'] });
+
+      const cargos = await this.ordersRepository.find({ where: { active: true }, relations: ['merchant'] });
+
+      // for (let i = 0; i < data.length; i++) {
+      //   const bankAccount: any = await this.bankAccountRepository.find({ where: { active: true, merchantId: data[i]?.id }, relations: ['currency'] })
+      //   const accountData = bankAccount.map((el: any) => {
+      //     return { account: el.account, currencyName: el.currency?.name }
+      //   })
+      //   data[i].bankAccounts = accountData;
+      //   data[i].cargosCount = cargos.filter((el: any) => el.merchant['id'] == data[i].id).length;
+
+      //   const rawTransactions = transactions.filter((el: any) => el.merchant['id'] == data[i]?.id);
+      //   const topup = rawTransactions.filter((el: any) => el.transactionType == 'topup').reduce((a: any, b: any) => a + b.amount, 0);
+      //   const withdraw = rawTransactions.filter((el: any) => el.transactionType == 'withdrow').reduce((a: any, b: any) => a + b.amount, 0);
+      // }
       return new BpmResponse(true, data, null);
     }
     catch (error: any) {
       console.log(error)
     }
-  } 
+  }
 
   async getUnverifiedMerchants() {
     try {
@@ -72,13 +82,13 @@ export class MerchantService {
         where: { active: true, verified: false, rejected: false, completed: true },
         relations: ['users']
       });
-      for (let i = 0; i < data.length; i++) {
-        const bankAccount: any = await this.bankAccountRepository.find({ where: { active: true, merchantId: data[i].id }, relations: ['currency'] })
-        const accountData = bankAccount.map((el: any) => {
-          return { account: el.account, currencyName: el.currency?.name }
-        })
-        data[i].bankAccounts = accountData;
-      }
+      // for (let i = 0; i < data.length; i++) {
+      //   const bankAccount: any = await this.bankAccountRepository.find({ where: { active: true, merchantId: data[i].id }, relations: ['currency'] })
+      //   const accountData = bankAccount.map((el: any) => {
+      //     return { account: el.account, currencyName: el.currency?.name }
+      //   })
+      //   data[i].bankAccounts = accountData;
+      // }
       return new BpmResponse(true, data, null);
     }
     catch (error: any) {
@@ -89,16 +99,16 @@ export class MerchantService {
   async findMerchantById(id: number) {
     try {
       const data = await this.merchantsRepository.findOne({ where: { id, active: true } });
-      if (data) {
-          const bankAccount: any = await this.bankAccountRepository.find({ where: { active: true, merchantId: data.id }, relations: ['currency'] })
-          const accountData = bankAccount.map((el: any) => {
-            return { account: el.account, currencyName: el.currency?.name }
-          })
-          data.bankAccounts = accountData;
-        return new BpmResponse(true, data, null);
-      } else {
-        return new BpmResponse(false, null, ['Not found']);
-      }
+      // if (data) {
+      //   const bankAccount: any = await this.bankAccountRepository.find({ where: { active: true, merchantId: data.id }, relations: ['currency'] })
+      //   const accountData = bankAccount.map((el: any) => {
+      //     return { account: el.account, currencyName: el.currency?.name }
+      //   })
+      //   data.bankAccounts = accountData;
+      //   return new BpmResponse(true, data, null);
+      // } else {
+      //   return new BpmResponse(false, null, ['Not found']);
+      // }
     }
     catch (error: any) {
       console.log(error)
@@ -109,7 +119,7 @@ export class MerchantService {
     return await this.merchantsRepository.findOneOrFail({ where: { email } });
   }
 
-  async createMerchant(createMerchantDto: MerchantDto) {
+  async createMerchant(createMerchantDto: CreateMerchantDto) {
     try {
       const saltOrRounds = 10;
       const passwordHash = await bcrypt.hash(createMerchantDto.password, saltOrRounds);
@@ -121,16 +131,6 @@ export class MerchantService {
 
 
       const newMerchant = await this.merchantsRepository.save(merchant);
-      if (createMerchantDto.bankAccounts) {
-        createMerchantDto.bankAccounts.forEach((el: any) => el.merchantId = newMerchant.id)
-        const accounts: any = createMerchantDto.bankAccounts
-        this.bankAccountRepository
-          .createQueryBuilder()
-          .insert()
-          .into(BankAccount)
-          .values(accounts)
-          .execute()
-      }
       if (newMerchant) {
         return new BpmResponse(true, newMerchant, null)
       }
@@ -139,154 +139,51 @@ export class MerchantService {
       throw new HttpException('internal error', HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
-
-  async completeMerchant(completeMerchantDto: CompleteMerchantDto) {
-    try {
-      const merchant: Merchant = await this.merchantsRepository.findOneOrFail({  where: { id: completeMerchantDto.id }});
-
-      if (completeMerchantDto.taxPayerCode) {
-        merchant.taxPayerCode = completeMerchantDto.taxPayerCode;
-      }
-      if (completeMerchantDto.responsbilePersonPhoneNumber) {
-        merchant.responsbilePersonPhoneNumber = completeMerchantDto.responsbilePersonPhoneNumber;
-      }
-      if (completeMerchantDto.registrationCertificateFilePath) {
-        merchant.registrationCertificateFilePath = completeMerchantDto.registrationCertificateFilePath;
-      }
-      if (completeMerchantDto.responsiblePersonLastName) {
-        merchant.responsiblePersonLastName = completeMerchantDto.responsiblePersonLastName;
-      }
-      if (completeMerchantDto.responsiblePersonFistName) {
-        merchant.responsiblePersonFistName = completeMerchantDto.responsiblePersonFistName;
-      }
-      if (completeMerchantDto.passportFilePath) {
-        merchant.passportFilePath = completeMerchantDto.passportFilePath;
-      }
-      if (completeMerchantDto.logoFilePath) {
-        merchant.logoFilePath = completeMerchantDto.logoFilePath;
-      }
-      if (completeMerchantDto.notes) {
-        merchant.notes = completeMerchantDto.notes;
-      }
-      if (completeMerchantDto.mfo) {
-        merchant.mfo = completeMerchantDto.mfo;
-      }
-      if (completeMerchantDto.inn) {
-        merchant.inn = completeMerchantDto.inn;
-      }
-      if (completeMerchantDto.oked) {
-        merchant.oked = completeMerchantDto.oked;
-      }
-      if (completeMerchantDto.dunsNumber) {
-        merchant.dunsNumber = completeMerchantDto.dunsNumber;
-      }
-      if (completeMerchantDto.supervisorFirstName) {
-        merchant.supervisorFirstName = completeMerchantDto.supervisorFirstName;
-      }
-      if (completeMerchantDto.supervisorLastName) {
-        merchant.supervisorLastName = completeMerchantDto.supervisorLastName;
-      }
-      if (completeMerchantDto.legalAddress) {
-        merchant.legalAddress = completeMerchantDto.legalAddress;
-      }
-      if (completeMerchantDto.factAddress) {
-        merchant.factAddress = completeMerchantDto.factAddress;
-      }
-      if (completeMerchantDto.bankName) {
-        merchant.bankName = completeMerchantDto.bankName;
-      }
-      merchant.completed = true;
-      const newMerchant = await this.merchantsRepository.update({ id: merchant.id }, merchant);
-      if (completeMerchantDto.bankAccounts) {
-        completeMerchantDto.bankAccounts.forEach((el: any) => el.merchantId = merchant.id)
-        const accounts: any = completeMerchantDto.bankAccounts
-        this.bankAccountRepository
-          .createQueryBuilder()
-          .insert()
-          .into(BankAccount)
-          .values(accounts)
-          .execute()
-      }
-      if (newMerchant) {
-        return new BpmResponse(true, newMerchant, null)
-      }
-    } catch (error: any) {
-      console.log(error)
-      throw new HttpException('internal error', HttpStatus.INTERNAL_SERVER_ERROR)
-    }
-  }
-
-  async updateMerchant(id: number, updateMerchantDto: MerchantDto): Promise<BpmResponse> {
+  async updateMerchant(id: number, files: any, updateMerchantDto: MerchantDto): Promise<BpmResponse> {
     try {
 
-      const merchant: Merchant = await this.merchantsRepository.findOneBy({ id });
+      const merchant: Merchant = await this.merchantsRepository.findOneOrFail({ where: { id } });
 
-      merchant.email = updateMerchantDto.email;
-      merchant.phoneNumber = updateMerchantDto.phoneNumber;
-      merchant.companyName = updateMerchantDto.companyName;
-      
       if (updateMerchantDto.password) {
         const saltOrRounds = 10;
         const passwordHash = await bcrypt.hash(updateMerchantDto.password, saltOrRounds);
         merchant.password = passwordHash;
       }
-      if (updateMerchantDto.responsiblePersonLastName) {
-        merchant.responsiblePersonLastName = updateMerchantDto.responsiblePersonLastName;
-      }
-      if (updateMerchantDto.responsiblePersonFistName) {
-        merchant.responsiblePersonFistName = updateMerchantDto.responsiblePersonFistName;
-      }
-      if (updateMerchantDto.registrationCertificateFilePath) {
-        merchant.registrationCertificateFilePath = updateMerchantDto.registrationCertificateFilePath;
-      }
-      if (updateMerchantDto.passportFilePath) {
-        merchant.passportFilePath = updateMerchantDto.passportFilePath;
-      }
-      if (updateMerchantDto.logoFilePath) {
-        merchant.logoFilePath = updateMerchantDto.logoFilePath;
-      }
-      if (updateMerchantDto.notes) {
-        merchant.notes = updateMerchantDto.notes;
-      }
-      if (updateMerchantDto.mfo) {
-        merchant.mfo = updateMerchantDto.mfo;
-      }
-      if (updateMerchantDto.inn) {
-        merchant.inn = updateMerchantDto.inn;
-      }
-      if (updateMerchantDto.oked) {
-        merchant.oked = updateMerchantDto.oked;
-      }
-      if (updateMerchantDto.dunsNumber) {
-        merchant.dunsNumber = updateMerchantDto.dunsNumber;
-      }
-      if (updateMerchantDto.supervisorFirstName) {
-        merchant.supervisorFirstName = updateMerchantDto.supervisorFirstName;
-      }
-      if (updateMerchantDto.supervisorLastName) {
-        merchant.supervisorLastName = updateMerchantDto.supervisorLastName;
-      }
-      if (updateMerchantDto.legalAddress) {
-        merchant.legalAddress = updateMerchantDto.legalAddress;
-      }
-      if (updateMerchantDto.factAddress) {
-        merchant.factAddress = updateMerchantDto.factAddress;
-      }
-      if (updateMerchantDto.bankName) {
-        merchant.bankName = updateMerchantDto.bankName;
-      }
-      const updatedMerchant = await this.merchantsRepository.update({ id: merchant.id }, merchant);
+
+      merchant.registrationCertificateFilePath = updateMerchantDto.registrationCertificateFilePath || merchant.registrationCertificateFilePath;
+      merchant.transportationCertificateFilePath = updateMerchantDto.transportationCertificateFilePath || merchant.transportationCertificateFilePath;
+      merchant.passportFilePath = updateMerchantDto.passportFilePath || merchant.passportFilePath;
+      merchant.logoFilePath = updateMerchantDto.logoFilePath || merchant.logoFilePath;
+
+      merchant.phoneNumber = updateMerchantDto.phoneNumber || merchant.phoneNumber;
+      merchant.companyName = updateMerchantDto.companyName || merchant.companyName;
+      merchant.responsiblePersonLastName = updateMerchantDto.responsiblePersonLastName || merchant.responsiblePersonLastName;
+      merchant.responsiblePersonFistName = updateMerchantDto.responsiblePersonFistName || merchant.responsiblePersonFistName;
+      merchant.notes = updateMerchantDto.notes || merchant.notes;
+      merchant.mfo = updateMerchantDto.mfo || merchant.mfo;
+      merchant.inn = updateMerchantDto.inn || merchant.inn;
+      merchant.oked = updateMerchantDto.oked || merchant.oked;
+      merchant.dunsNumber = updateMerchantDto.dunsNumber || merchant.dunsNumber;
+      merchant.ibanNumber = updateMerchantDto.ibanNumber || merchant.ibanNumber;
+      merchant.supervisorFirstName = updateMerchantDto.supervisorFirstName || merchant.supervisorFirstName;
+      merchant.supervisorLastName = updateMerchantDto.supervisorLastName || merchant.supervisorLastName;
+      merchant.legalAddress = updateMerchantDto.legalAddress || merchant.legalAddress;
+      merchant.factAddress = updateMerchantDto.factAddress || merchant.factAddress;
+      merchant.bankName = updateMerchantDto.bankName || merchant.bankName;
+      merchant.taxPayerCode = updateMerchantDto.taxPayerCode || merchant.taxPayerCode;
+      merchant.responsbilePersonPhoneNumber = updateMerchantDto.responsbilePersonPhoneNumber || merchant.responsbilePersonPhoneNumber;
+
       if (updateMerchantDto.bankAccounts) {
-        await this.bankAccountRepository.delete({ merchantId: merchant.id });
-        updateMerchantDto.bankAccounts.forEach((el: any) => el.merchantId = merchant.id)
-        const accounts: any = updateMerchantDto.bankAccounts;
-        this.bankAccountRepository
-          .createQueryBuilder()
-          .insert()
-          .into(BankAccount)
-          .values(accounts)
-          .execute()
+        await this.bankAccountRepository.delete({ merchant: { id: merchant.id} });
+        const query = `
+        INSERT INTO bank_account (account, currency, ...) 
+        VALUES
+          ${updateMerchantDto.bankAccounts.map((account: any) => `('${account.account}', '${account.currency}', ...)`).join(', ')}
+        RETURNING *;`;
+        merchant.bankAccounts = await this.bankAccountRepository.query(query);
       }
+
+      const updatedMerchant = await this.merchantsRepository.update({ id: merchant.id }, merchant);
       if (updatedMerchant) {
         return new BpmResponse(true, updatedMerchant, null);
       }
@@ -305,9 +202,7 @@ export class MerchantService {
         merchant.verified = true;
         const verifed = await this.merchantsRepository.save(merchant);
         if (verifed) {
-          const role = (await this.rolesRepository.findOne({ where: { name: 'Super admin' }}))?.id;
-          // const saltOrRounds = 10;
-          // const passwordHash = await bcrypt.hash(merchant.password, saltOrRounds);
+          const role = (await this.rolesRepository.findOne({ where: { name: 'Super admin' } }))?.id;
           const userObj: any = {
             fullName: merchant.supervisorFirstName + ' ' + merchant.supervisorLastName,
             password: merchant.password,

@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Patch, Post, Put, Query, UploadedFile, UseInterceptors, UsePipes, ValidationPipe } from "@nestjs/common";
-import { CompleteMerchantDto, MerchantDto } from "./merchant.dto";
+import { Body, Controller, Delete, Get, Patch, Post, Put, Query, UploadedFile, UseInterceptors, UsePipes, ValidationPipe, UploadedFiles } from "@nestjs/common";
+import { CreateMerchantDto, MerchantDto } from "./merchant.dto";
 import { MerchantService } from "./merchant.service";
+import { FilesInterceptor } from "@nestjs/platform-express";
 
-@Controller('api/v1/merchant')
+@Controller('api/v2/merchant')
 export class MerchantController {
   constructor(
     private merchantsService: MerchantService
@@ -30,20 +31,36 @@ export class MerchantController {
 
   @Post()
   @UsePipes(ValidationPipe)
-  async create(@Body() createMerchantDto: MerchantDto) {
+  async create(@Body() createMerchantDto: CreateMerchantDto) {
     return this.merchantsService.createMerchant(createMerchantDto);
   }
 
-  @Post('complete')
-  @UsePipes(ValidationPipe)
-  async complete(@Body() completeMerchantDto: CompleteMerchantDto) {
-    return this.merchantsService.completeMerchant(completeMerchantDto);
-  }
-
   @Put()
+  @UseInterceptors(FilesInterceptor('file'))
   @UsePipes(ValidationPipe)
-  async update(@Query('id') id: number, @Body() updateMerchantDto: MerchantDto) {
-    return this.merchantsService.updateMerchant(id, updateMerchantDto);
+  async update(
+    @UploadedFiles() file: any,
+    @Body('merchantId') merchantId: number,
+    @Body('phoneNumber') phoneNumber: string,
+    @Body('companyName') companyName: string,
+    @Body('password') password: string,
+    @Body('responsiblePersonLastName') responsiblePersonLastName: string,
+    @Body('responsiblePersonFistName') responsiblePersonFistName: string,
+    @Body('notes') notes: string,
+    @Body('mfo') mfo: string,
+    @Body('inn') inn: string,
+    @Body('oked') oked: string,
+    @Body('dunsNumber') dunsNumber: number,
+    @Body('ibanNumber') ibanNumber: number,
+    @Body('supervisorFirstName') supervisorFirstName: string,
+    @Body('supervisorLastName') supervisorLastName: string,
+    @Body('legalAddress') legalAddress: string,
+    @Body('factAddress') factAddress: string,
+    @Body('bankName') bankName: string,
+    @Body('taxPayerCode') taxPayerCode: string,
+    @Body('responsbilePersonPhoneNumber') responsbilePersonPhoneNumber: string
+  ) {
+    return this.merchantsService.updateMerchant(merchantId, file, { phoneNumber, password, companyName, responsiblePersonLastName, responsiblePersonFistName, notes, mfo, inn, oked, dunsNumber, ibanNumber, supervisorFirstName, supervisorLastName, legalAddress, factAddress, bankName, taxPayerCode, responsbilePersonPhoneNumber });
   }
 
   @Patch('/verify')

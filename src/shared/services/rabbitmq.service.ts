@@ -2,7 +2,6 @@
 
 import { Inject, Injectable, OnModuleInit, forwardRef } from '@nestjs/common';
 import * as amqp from 'amqplib';
-import { CargosService } from 'src/main/cargo/cargo.service';
 import { SseGateway } from '../gateway/sse.gateway';
 
 @Injectable()
@@ -11,7 +10,6 @@ export class RabbitMQService implements OnModuleInit {
   private channel: amqp.Channel;
 
   constructor(
-    private readonly cargosService: CargosService,
     private eventService: SseGateway
     ) {}
 
@@ -46,7 +44,7 @@ export class RabbitMQService implements OnModuleInit {
         console.log(`Received message finishOrderDriver: ${JSON.stringify(data)}`);
         this.eventService.sendDriverFinish('1')
         // Process the message using CargosService
-        await this.cargosService.finishCargo(data);
+        // await this.cargosService.finishCargo(data);
       } catch (error) {
         console.error('Error parsing message finishOrderDriver:', error);
       }
@@ -77,7 +75,7 @@ export class RabbitMQService implements OnModuleInit {
         console.log(`Received message acceptAdminAppendOrder: ${JSON.stringify(data)}`);
         
         // Process the message using CargosService
-        await this.cargosService.appendCargo(data);
+        // await this.cargosService.appendCargo(data);
         
       } catch (error) {
         console.error('Error parsing message acceptAdminAppendOrder:', error);
@@ -94,7 +92,7 @@ export class RabbitMQService implements OnModuleInit {
         console.log(`Received message acceptAdminCancelOrder: ${JSON.stringify(data)}`);
         
         // Process the message using CargosService
-        await this.cargosService.cancelCargo(data);
+        // await this.cargosService.cancelCargo(data);
         this.eventService.sendCancelOrder('1')
         
       } catch (error) {

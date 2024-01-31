@@ -2,10 +2,7 @@
 import { IsEmail, IsNotEmpty, IsString } from "class-validator";
 import { PrimaryGeneratedColumn } from "typeorm";
 
-export class MerchantDto {
-
-  id?: number;
-
+export class CreateMerchantDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -22,11 +19,19 @@ export class MerchantDto {
   @IsNotEmpty()
   password: string;
 
+}
+
+export class MerchantDto {
+
+  id?: number;
   responsiblePersonLastName: string;
   responsiblePersonFistName: string;
-
-
+  responsbilePersonPhoneNumber?: string;
+  password: string;
+  phoneNumber: string;
+  companyName: string;
   registrationCertificateFilePath?: string;
+  transportationCertificateFilePath?: string; 
   passportFilePath?: string;
   logoFilePath?: string;
   notes?: string;
@@ -41,78 +46,8 @@ export class MerchantDto {
   bankName?: string;
   bankAccounts?: iBankAccount[];
   verifiedBy?: string;
-}
-
-export class CompleteMerchantDto {
-
-  @IsString()
-  @IsNotEmpty()
-  id?: number;
-
-  @IsString()
-  @IsNotEmpty()
-  responsiblePersonLastName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  responsiblePersonFistName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  registrationCertificateFilePath?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  passportFilePath?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  logoFilePath?: string;
-
-  taxPayerCode?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  responsbilePersonPhoneNumber?: string;
-
-
-  notes?: string;
-  dunsNumber?: number;
   ibanNumber?: number;
-
-  @IsString()
-  @IsNotEmpty()
-  mfo?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  inn?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  oked?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  supervisorFirstName?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  supervisorLastName?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  legalAddress?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  factAddress?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  bankName?: string;
-
-  bankAccounts?: iBankAccount[];
+  taxPayerCode?: string;
 }
 
 export interface iBankAccount {

@@ -10,6 +10,9 @@
     "target": "es2017",
     "sourceMap": true,
     "outDir": "./dist",
+     "paths": {
+      "@shared-entities/*": ["../libs/shared-entities/src/*"]
+    },
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,

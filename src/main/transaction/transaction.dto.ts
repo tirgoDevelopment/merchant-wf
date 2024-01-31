@@ -1,19 +1,35 @@
-
-import { IsNotEmpty } from "class-validator";
-import { PrimaryGeneratedColumn } from "typeorm";
+import { IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 export class TransactionDto {
 
-  @PrimaryGeneratedColumn("uuid")
-  id: string;
-
-  @IsNotEmpty()
-  transactionType: string;
-
+  @IsNumber()
   @IsNotEmpty()
   amount: number;
 
+  // @IsNumber()
+  // @IsNotEmpty()
+  taxAmount: number;
+
+  // @IsNumber()
+  // @IsNotEmpty()
+  additionalAmount: number;
+
+  @IsString()
   @IsNotEmpty()
-  merchantId: number;
+  transactionType: string;
+
+  @IsString()
+  @IsNotEmpty()
+  userType: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  userId: number;
+
+  @IsString()
+  @IsNotEmpty()
+  comment: string;
+
+  id?: number;
 
 }
